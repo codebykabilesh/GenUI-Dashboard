@@ -101,11 +101,11 @@ def test_tool_schemas_come_from_mcp_discovery():
     fake = FakeLLM(lambda r: completion("ok"))
     with build(fake) as client:
         chat(client, "hi")
-        discovered = {t["name"]: t for t in client.get("/api/v1/tools").json()["tools"]}
+        discovered = {t["tool"]: t for t in client.get("/api/v1/tools").json()["tools"]}
     sent = {t["function"]["name"]: t["function"] for t in fake.requests[0]["tools"]}
+    # unambiguous tools are offered to the LLM under their bare names
     assert set(sent) == set(discovered) and len(sent) == 5
-    name = "investigation__search_vehicle"
-    assert sent[name]["parameters"] == discovered[name]["input_schema"]
+    assert sent["search_vehicle"]["parameters"] == discovered["search_vehicle"]["input_schema"]
     assert fake.requests[0]["tool_choice"] == "auto"
 
 
@@ -275,6 +275,17 @@ def test_conversation_history_across_messages():
     assert [m["role"] for m in stored] == ["user", "assistant", "tool", "assistant", "user", "assistant"]
 
 
+def test_bare_tool_names_from_the_llm_are_executed():
+    fake = FakeLLM(
+        lambda r: completion(tool_calls=[tc("b", "search_vehicle", {"registration_number": "KA01AB1234"})]),
+        lambda r: completion("done"),
+    )
+    with build(fake) as client:
+        body = chat(client, "search").json()
+    assert body["tool_results"][0]["is_error"] is False
+    assert len(body["tool_results"][0]["content"]["records"]) == 2
+
+
 def test_create_provider_validation():
     with pytest.raises(ValueError, match="LLM_API_KEY"):
         create_provider(Settings(_env_file=None, llm_provider="openrouter"))
@@ -283,3 +294,73 @@ def test_create_provider_validation():
     # legacy OPENROUTER_* variables work as fallback
     p = create_provider(Settings(_env_file=None, llm_provider="openrouter", openrouter_api_key="k", openrouter_model="m"))
     assert p.name == "openrouter"
+    g = create_provider(Settings(_env_file=None, llm_provider="groq", groq_api_key="k", groq_model="openai/gpt-oss-120b"))
+    assert g.name == "groq" and g._url == "https://api.groq.com/openai/v1/chat/completions"
+
+
+def test_llm_context_is_bounded_in_long_conversations():
+    def step(r):
+        if r["messages"][-1]["role"] == "tool":
+            return completion("done")
+        return completion(tool_calls=[tc(f"c{len(r['messages'])}", "get_vehicle_history", {"registration_number": "KA01AB1234"})])
+
+    fake = FakeLLM(step)
+    with build(fake) as client:
+        sid = None
+        for i in range(6):
+            sid = chat(client, f"question {i}", sid).json()["session_id"]
+        stored = client.get(f"/api/v1/sessions/{sid}").json()["messages"]
+    last = fake.requests[-1]["messages"]
+    assert sum(m["role"] == "user" for m in last) == 3  # only the last three turns
+    assert sum(m["role"] == "user" for m in stored) == 6  # full history is kept in the session
+    old_tools = [m for m in last[:-2] if m["role"] == "tool"]
+    assert old_tools and all(m["content"].endswith("[earlier result shortened]") for m in old_tools)
+    assert not last[-1]["content"].endswith("[earlier result shortened]")  # current result is complete
+
+
+RATE_LIMITED = {"error": {"message": "Rate limit reached for model on tokens per minute (TPM): Limit 8000, "
+                                     "Used 4526, Requested 3862. Please try again in 2.91s."}}
+
+
+def _no_sleep_provider(fake):
+    provider = make_provider(fake)
+    provider.waits = []
+
+    async def sleep(seconds):
+        provider.waits.append(seconds)
+
+    provider._sleep = sleep
+    return provider
+
+
+def test_short_rate_limits_are_retried():
+    fake = FakeLLM(lambda r: httpx.Response(429, json=RATE_LIMITED), lambda r: completion("after the wait"))
+    provider = _no_sleep_provider(fake)
+    settings = Settings(_env_file=None, mcp_servers=[MCPServerConfig(name="investigation", url="http://x.invalid/mcp")])
+    with TestClient(create_app(settings, client_factory=investigation_factory, llm_provider=provider)) as client:
+        body = chat(client, "hi").json()
+    assert body["reply"] == "after the wait"
+    assert len(fake.requests) == 2 and provider.waits == [pytest.approx(3.16)]
+
+
+def test_long_or_repeated_rate_limits_are_reported():
+    long_wait = {"error": {"message": "Rate limit reached. Please try again in 5m12s."}}
+    for responses, attempts in ((long_wait, 1), (RATE_LIMITED, 4)):
+        fake = FakeLLM(lambda r, body=responses: httpx.Response(429, json=body))
+        provider = _no_sleep_provider(fake)
+        settings = Settings(_env_file=None, mcp_servers=[])
+        with TestClient(create_app(settings, llm_provider=provider)) as client:
+            r = chat(client, "hi")
+        assert r.status_code == 502 and "429" in r.json()["error"]["message"]
+        assert len(fake.requests) == attempts
+
+
+def test_retry_after_parsing():
+    from app.llm.openai_compat import _retry_after
+
+    msg = lambda m: {"error": {"message": m}}
+    assert _retry_after(httpx.Headers(), msg("Please try again in 2.91s.")) == pytest.approx(2.91)
+    assert _retry_after(httpx.Headers(), msg("try again in 1m4.5s")) == pytest.approx(64.5)
+    assert _retry_after(httpx.Headers(), msg("try again in 450ms")) == pytest.approx(0.45)
+    assert _retry_after(httpx.Headers({"retry-after": "7"}), None) == 7
+    assert _retry_after(httpx.Headers(), msg("invalid api key")) is None

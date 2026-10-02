@@ -22,7 +22,9 @@ All results share an envelope: `found`, `message`, `mock_data: true`. Unknown ve
 | `get_detection_by_id` | `detection_id` (e.g. `DET-0001`) | one detection record |
 | `get_detection_evidence` | `detection_id` | placeholder `mock://` evidence references |
 
-Plates are normalised (case, spaces, hyphens ignored). Mock plates: `KA01AB1234` (DET-0001, DET-0002), `KA05MN4321` (DET-0003), `MH12XY9876` (DET-0004).
+Plates are normalised (case, spaces, hyphens ignored). Each sighting has a camera ID, lane and speed.
+
+Reference plates: `KA01AB1234` (DET-0001, DET-0002), `KA05MN4321` (DET-0003), `MH12XY9876` (DET-0004). The full development dataset (`data.py`) has ~85 registered vehicles and ~3,600 sightings from 19 Sep to 2 Oct 2026 (IST) across 16 Chennai junctions (`servers/common/chennai.py`). Searches return the latest 20 sightings and histories the latest 50; `total` gives the full count.
 
 ## Test
 `uv run pytest tests/`

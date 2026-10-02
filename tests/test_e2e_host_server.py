@@ -119,7 +119,7 @@ def test_error_cases(stack):
 def test_chat_uses_real_tool(stack):
     client, _ = stack
     body = client.post("/api/v1/chat", json={"message": "run search_vehicle"}).json()
-    assert body["tool_calls"][0]["name"] == "investigation__search_vehicle"
+    assert body["tool_calls"][0]["name"] == "search_vehicle"  # bare alias offered to the LLM
 
 
 def test_disconnection_and_recovery(stack):

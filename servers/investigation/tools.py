@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 _default_repo = MockRepository()
 
+SEARCH_LIMIT = 20  # most recent sightings returned by search_vehicle
+HISTORY_LIMIT = 50  # most recent sightings returned by get_vehicle_history
+
 
 class InvalidInputError(ValueError):
     """Raised when a tool argument fails validation."""
@@ -57,11 +60,14 @@ def search_vehicle(
             found=False,
             message=f"No vehicle found with registration number {plate} in the (mock) ANPR records.",
         )
+    shown = matches[-SEARCH_LIMIT:]
+    more = f" Showing the latest {len(shown)}." if len(shown) < len(matches) else ""
     return SearchVehicleResult(
         query=plate,
         found=True,
-        message=f"Found {len(matches)} record(s) for {plate} (mock data).",
-        records=matches,
+        message=f"Found {len(matches)} sighting(s) for {plate} (mock data).{more}",
+        total=len(matches),
+        records=shown,
     )
 
 
@@ -90,12 +96,14 @@ def get_vehicle_history(
         return VehicleHistoryResult(
             query=plate, found=False, message=f"No detection history found for {plate} (mock data)."
         )
+    shown = records[-HISTORY_LIMIT:]
+    more = f" Showing the latest {len(shown)}." if len(shown) < len(records) else ""
     return VehicleHistoryResult(
         query=plate,
         found=True,
-        message=f"{len(records)} detection(s) for {plate}, oldest first (mock data).",
+        message=f"{len(records)} detection(s) for {plate}, oldest first (mock data).{more}",
         total=len(records),
-        records=records,
+        records=shown,
     )
 
 

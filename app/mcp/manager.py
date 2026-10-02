@@ -161,6 +161,20 @@ class MCPClientManager:
             raise ToolNotFoundError(f"Tool name '{name}' is ambiguous; use one of: {names}")
         raise ToolNotFoundError(f"Unknown tool '{name}'")
 
+    def tool_aliases(self) -> dict[str, str]:
+        """Names to show an LLM -> namespaced names.
+
+        A tool's bare name is used when no other connected server has a tool with that
+        name; otherwise only the namespaced form is offered. Namespaced names always map.
+        """
+        tools = self.list_tools()
+        counts: dict[str, int] = {}
+        for t in tools:
+            counts[t.tool] = counts.get(t.tool, 0) + 1
+        aliases = {t.name: t.name for t in tools}
+        aliases.update({t.tool: t.name for t in tools if counts[t.tool] == 1})
+        return aliases
+
     def validate_arguments(self, name: str, arguments: dict[str, Any]) -> ToolInfo:
         """Resolve a tool and check arguments against its discovered JSON schema."""
         info = self.get_tool(name)

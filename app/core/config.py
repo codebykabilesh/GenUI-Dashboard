@@ -44,13 +44,17 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    # Also allow any port on the local machine (Vite picks the next free port). Empty to disable.
+    cors_origin_regex: str = r"^http://(localhost|127\.0\.0\.1|\[::1\]):\d+$"
 
-    llm_provider: str = "mock"  # mock | openrouter | openai_compatible
+    llm_provider: str = "mock"  # mock | groq | openrouter | openai_compatible
     llm_model: str = ""
     llm_api_key: SecretStr | None = None
     llm_base_url: str = ""
     llm_timeout: float = 60.0
-    # Legacy variable names, used as fallback by the "openrouter" provider.
+    # Provider-specific names, used as fallback by the "groq" / "openrouter" presets.
+    groq_api_key: SecretStr | None = None
+    groq_model: str = ""
     openrouter_api_key: SecretStr | None = None
     openrouter_model: str = ""
     max_tool_rounds: int = 5

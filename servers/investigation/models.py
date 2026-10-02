@@ -49,8 +49,11 @@ class ANPRRecord(BaseModel):
     vehicle_type: str
     confidence: float = Field(ge=0, le=1)
     junction_id: str
-    timestamp: datetime
+    timestamp: datetime  # local time (IST, +05:30)
     direction: Literal["N", "S", "E", "W", "NE", "NW", "SE", "SW"]
+    camera_id: str
+    lane: int = Field(ge=1, le=4)
+    speed_kmph: int = Field(ge=0, le=160)
 
 
 class VehicleDetails(BaseModel):
@@ -60,6 +63,9 @@ class VehicleDetails(BaseModel):
     model: str
     colour: str
     registered_state: str
+    registering_office: str
+    fuel_type: str
+    registration_year: int
 
 
 class EvidenceRef(BaseModel):
@@ -79,6 +85,7 @@ class _MockResult(BaseModel):
 
 class SearchVehicleResult(_MockResult):
     query: str
+    total: int = 0  # all matching sightings; `records` holds the most recent ones
     records: list[ANPRRecord] = Field(default_factory=list)
 
 

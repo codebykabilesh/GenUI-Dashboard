@@ -5,10 +5,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import chat, health, mcp
+from app.api.routes import chat, health, mcp, ui
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import setup_logging
+from app.genui.service import GenUIService
 from app.llm.base import LLMProvider
 from app.llm.gateway import LLMGateway, create_provider
 from app.mcp.manager import ClientFactory, MCPClientManager, default_client_factory
@@ -39,8 +40,9 @@ def create_app(
         app.state.settings = settings
         app.state.sessions = sessions
         app.state.mcp = mcp_manager
+        app.state.genui = GenUIService(mcp_manager, sessions)
         app.state.orchestrator = Orchestrator(
-            sessions, mcp_manager, llm, max_tool_rounds=settings.max_tool_rounds
+            sessions, mcp_manager, llm, max_tool_rounds=settings.max_tool_rounds, genui=app.state.genui
         )
         await mcp_manager.start()
         logger.info("Runtime started (llm=%s)", llm.provider_name)
@@ -55,6 +57,7 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
+        allow_origin_regex=settings.cors_origin_regex or None,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -62,6 +65,7 @@ def create_app(
     app.include_router(health.router)
     app.include_router(mcp.router)
     app.include_router(chat.router)
+    app.include_router(ui.router)
     return app
 
 

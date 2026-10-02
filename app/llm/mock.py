@@ -1,6 +1,7 @@
 import uuid
+from collections.abc import AsyncIterator
 
-from app.llm.base import LLMResponse
+from app.llm.base import LLMResponse, StreamEvent
 from app.schemas.common import Message, ToolCall, ToolInfo
 
 
@@ -36,3 +37,11 @@ class MockLLMProvider:
         return LLMResponse(
             content=f"[mock LLM] You said: {user_text!r}. Available MCP tools: {available}."
         )
+
+    async def stream(
+        self, messages: list[Message], tools: list[ToolInfo], system: str | None = None
+    ) -> AsyncIterator[StreamEvent]:
+        response = await self.complete(messages, tools, system)
+        for word in response.content.split(" "):
+            yield StreamEvent(kind="delta", text=word + " ")
+        yield StreamEvent(kind="final", response=response)

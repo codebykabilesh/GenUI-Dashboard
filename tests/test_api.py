@@ -68,7 +68,7 @@ def test_chat_invokes_real_mcp_tool(client_with_server):
     # mock LLM requests the tool with empty args -> server rejects; surfaced as tool error
     r = client_with_server.post("/api/v1/chat", json={"message": "please run demo__add"})
     body = r.json()
-    assert body["tool_calls"][0]["name"] == "demo__add"
+    assert body["tool_calls"][0]["name"] == "add"  # bare alias offered to the LLM
     assert body["tool_results"][0]["is_error"] is True
 
 

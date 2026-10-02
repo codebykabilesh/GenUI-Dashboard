@@ -32,6 +32,7 @@ class ChatResponse(BaseModel):
     tool_calls: list[ToolCall] = Field(default_factory=list)
     tool_results: list[ToolResult] = Field(default_factory=list)
     llm_provider: str
+    ui: list[dict[str, Any]] = Field(default_factory=list, description="A2UI v0.8 messages for the reply")
 
 
 class SessionResponse(BaseModel):
@@ -49,3 +50,23 @@ class ToolCallResponse(BaseModel):
     tool_name: str  # namespaced
     server: str
     result: Any
+
+
+class UserAction(BaseModel):
+    """A2UI v0.8 client-to-server userAction."""
+
+    name: str = Field(min_length=1)
+    surfaceId: str = Field(min_length=1)
+    sourceComponentId: str = ""
+    timestamp: str | None = None
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class UIActionRequest(BaseModel):
+    session_id: str | None = None
+    userAction: UserAction
+
+
+class UIActionResponse(BaseModel):
+    tool_name: str
+    messages: list[dict[str, Any]]

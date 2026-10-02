@@ -1,6 +1,7 @@
 from fastapi import Request
 
 from app.core.config import Settings
+from app.genui.service import GenUIService
 from app.mcp.manager import MCPClientManager
 from app.orchestrator.orchestrator import Orchestrator
 from app.sessions.manager import SessionManager
@@ -20,3 +21,7 @@ def get_mcp(request: Request) -> MCPClientManager:
 
 def get_orchestrator(request: Request) -> Orchestrator:
     return request.app.state.orchestrator
+
+
+def get_genui(request: Request) -> GenUIService:
+    return request.app.state.genui

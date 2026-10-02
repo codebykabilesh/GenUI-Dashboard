@@ -26,10 +26,12 @@ class MockRepository:
         return self._by_id.get(detection_id)
 
     def evidence_for(self, detection_id: str) -> list[EvidenceRef]:
-        """Mock evidence references; the URIs are placeholders, not real media."""
-        if detection_id not in self._by_id:
+        """Evidence references in the evidence store's layout (development data: no media behind them)."""
+        record = self._by_id.get(detection_id)
+        if record is None:
             return []
-        base = f"mock://evidence/{detection_id}"
+        base = (f"s3://chn-anpr-evidence/{record.timestamp:%Y/%m/%d}/{record.junction_id}/"
+                f"{record.camera_id}/{detection_id}")
         return [
             EvidenceRef(evidence_id=f"{detection_id}-IMG", kind="vehicle_image",
                         uri=f"{base}/vehicle.jpg", content_type="image/jpeg"),

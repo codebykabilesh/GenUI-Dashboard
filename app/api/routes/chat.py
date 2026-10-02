@@ -1,6 +1,9 @@
+import json
+from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 
 from app.core.deps import get_orchestrator, get_sessions
 from app.orchestrator.orchestrator import Orchestrator
@@ -23,3 +26,28 @@ async def get_session(
 ) -> SessionResponse:
     s = await sessions.get(session_id)
     return SessionResponse(session_id=s.id, created_at=s.created_at, messages=s.messages)
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@router.post("/chat/stream")
+async def chat_stream(
+    body: ChatRequest,
+    orchestrator: Annotated[Orchestrator, Depends(get_orchestrator)],
+    sessions: Annotated[SessionManager, Depends(get_sessions)],
+) -> StreamingResponse:
+    """Server-Sent Events: session, delta, tool_call, tool_result, done | error."""
+    if body.session_id:
+        await sessions.get(body.session_id)  # proper 404 before the stream starts
+
+    async def events() -> AsyncIterator[str]:
+        async for event, data in orchestrator.chat_stream(body.message, body.session_id):
+            yield _sse(event, data)
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

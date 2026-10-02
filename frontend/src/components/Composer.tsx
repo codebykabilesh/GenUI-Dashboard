@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MicIcon, PlusIcon, SendIcon, StopIcon } from "./Icons";
+import { Icon } from "./Icons";
 
 interface Props {
   busy: boolean;
@@ -15,7 +15,7 @@ export default function Composer({ busy, onSend, onStop }: Props) {
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [value]);
 
   const submit = () => {
@@ -28,12 +28,12 @@ export default function Composer({ busy, onSend, onStop }: Props) {
   return (
     <div className="composer-wrap">
       <div className="composer">
-        <button className="icon-btn" aria-label="Attach"><PlusIcon /></button>
         <textarea
           ref={ref}
           rows={1}
           value={value}
-          placeholder="Ask anything"
+          placeholder="Ask about a plate, a sighting, a junction or traffic patterns"
+          aria-label="Query"
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -42,14 +42,17 @@ export default function Composer({ busy, onSend, onStop }: Props) {
             }
           }}
         />
-        <button className="icon-btn" aria-label="Voice"><MicIcon /></button>
         {busy ? (
-          <button className="send-btn" onClick={onStop} aria-label="Stop"><StopIcon /></button>
+          <button className="btn btn-secondary btn-tall" onClick={onStop}>
+            <Icon name="stop" size={14} /> Stop
+          </button>
         ) : (
-          <button className="send-btn" onClick={submit} disabled={!value.trim()} aria-label="Send"><SendIcon /></button>
+          <button className="btn btn-primary btn-tall" onClick={submit} disabled={!value.trim()}>
+            Run query <Icon name="arrow-right" size={14} />
+          </button>
         )}
       </div>
-      <p className="disclaimer">ChatGPT can make mistakes. Check important info.</p>
+      <p className="composer-note">Answers are generated from the connected ANPR sources. Verify before acting on them.</p>
     </div>
   );
 }
