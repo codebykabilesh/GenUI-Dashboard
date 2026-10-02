@@ -1,0 +1,6 @@
+{"type":"session.started","sessionId":"20261002012703-xo7r","mode":"edit","at":1790884623391}
+{"type":"user.message","text":"Build a complete **Model Context Protocol (MCP) system** with a modular architecture consisting of:","at":1790884631155}
+{"type":"intent.updated","intent":{"text":"Build a complete **Model Context Protocol (MCP) system** with a modular architecture consisting of:","kind":"build","at":1790884631152},"at":1790884631157}
+{"type":"state.changed","status":"running","phase":"observe","at":1790884631158}
+{"type":"context.compiled","report":{"system":207,"state":51,"tools":659,"history":29,"total":950,"budget":262144,"pruned":"none","exposedCapabilities":["fs.read","fs.list","fs.search","fs.edit","fs.write","shell.exec","git.status","git.diff","plan.update"]},"at":1790884631161}
+{"type":"model.started","call":1,"at":1790884631165}

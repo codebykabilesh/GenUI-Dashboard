@@ -1,0 +1,99 @@
+{
+  "id": "20261002011349-02d0",
+  "title": "hi",
+  "createdAt": 1790883829476,
+  "updatedAt": 1790884149772,
+  "model": "nvidia/nemotron-3-super-120b-a12b:free",
+  "cwd": "D:\\MCP dashboard",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are CORE, a coding agent.\n\nRules:\n- Inspect before acting.\n- Never invent workspace facts.\n- Make the smallest safe change.\n- Prefer targeted edits.\n- Use available capabilities rather than pretending actions occurred.\n- Verify modifications.\n- Report only verified results.\n\nLoop: Observe → Decide → Act → Verify.\n\nOnly information supplied in the current context packet is known.\nIf you cannot continue, start your reply with \"BLOCKED:\" and say why.\n\nENVIRONMENT — facts about this machine, not assumptions:\n- Platform: win32 (x64)\n- Shell: C:\\WINDOWS\\system32\\cmd.exe\n- Write cmd.exe syntax. POSIX tools such as ls, grep and rm -rf may not exist here\n- Shell directory: D:\\MCP dashboard\n- Date: 2026-10-01\n- Model: nvidia/nemotron-3-super-120b-a12b:free\nDo not assume any other tool is installed. If you need one, check for it first."
+    },
+    {
+      "role": "user",
+      "content": "hi"
+    },
+    {
+      "role": "user",
+      "content": "hi"
+    }
+  ],
+  "usage": {
+    "promptTokens": 0,
+    "completionTokens": 0,
+    "totalTokens": 0,
+    "contextUsed": 0,
+    "contextLimit": 262144,
+    "lastContext": {
+      "system": 210,
+      "state": 26,
+      "tools": 659,
+      "history": 10,
+      "total": 910
+    },
+    "modelCalls": 2,
+    "toolCalls": 0
+  },
+  "todos": [],
+  "compactions": 0,
+  "core": {
+    "version": 1,
+    "state": {
+      "sessionId": "20261002011349-02d0",
+      "mode": "edit",
+      "status": "blocked",
+      "phase": "idle",
+      "intent": {
+        "text": "hi",
+        "kind": "general",
+        "at": 1790884145633
+      },
+      "workspace": {
+        "root": "D:\\MCP dashboard",
+        "cwd": "D:\\MCP dashboard",
+        "observed": {},
+        "changed": [],
+        "needsRefresh": false
+      },
+      "facts": [],
+      "observations": [],
+      "verification": {
+        "status": "none",
+        "pendingFiles": [],
+        "attempts": 0
+      },
+      "plan": [],
+      "grants": [],
+      "claims": [],
+      "counters": {
+        "iterations": 1,
+        "modelCalls": 1,
+        "toolCalls": 0,
+        "outputTokens": 0,
+        "startedAt": 1790884145634
+      },
+      "usage": {
+        "promptTokens": 0,
+        "completionTokens": 0,
+        "totalTokens": 0,
+        "contextUsed": 0,
+        "contextLimit": 262144,
+        "lastContext": {
+          "system": 210,
+          "state": 26,
+          "tools": 659,
+          "history": 10,
+          "total": 910
+        },
+        "modelCalls": 2,
+        "toolCalls": 0
+      },
+      "stopReason": {
+        "code": "MODEL_ERROR",
+        "message": "OpenRouter error: Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day",
+        "recoverable": true
+      }
+    }
+  }
+}

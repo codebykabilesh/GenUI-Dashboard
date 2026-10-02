@@ -1,0 +1,11 @@
+2026-10-01T19:43:49.476Z [CORE] session.started id=20261002011349-02d0 mode=edit
+2026-10-01T19:43:51.635Z [CORE] intent.updated kind=general
+2026-10-01T19:43:51.639Z [CORE] context.compiled tokens=905 budget=262144 pruned=none tools=9
+2026-10-01T19:43:51.641Z [CORE] model.started call=1
+2026-10-01T19:43:56.112Z [CORE] error code=MODEL_ERROR recoverable=true
+2026-10-01T19:43:56.117Z [CORE] session.completed status=blocked verified=false
+2026-10-01T19:49:05.635Z [CORE] intent.updated kind=general
+2026-10-01T19:49:05.639Z [CORE] context.compiled tokens=910 budget=262144 pruned=none tools=9
+2026-10-01T19:49:05.641Z [CORE] model.started call=1
+2026-10-01T19:49:09.769Z [CORE] error code=MODEL_ERROR recoverable=true
+2026-10-01T19:49:09.773Z [CORE] session.completed status=blocked verified=false

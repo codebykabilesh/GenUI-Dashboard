@@ -1,0 +1,32 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.python-version
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Node.js and Vite
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

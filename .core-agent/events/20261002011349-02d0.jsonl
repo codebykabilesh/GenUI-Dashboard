@@ -1,0 +1,15 @@
+{"type":"session.started","sessionId":"20261002011349-02d0","mode":"edit","at":1790883829476}
+{"type":"user.message","text":"hi","at":1790883831633}
+{"type":"intent.updated","intent":{"text":"hi","kind":"general","at":1790883831630},"at":1790883831635}
+{"type":"state.changed","status":"running","phase":"observe","at":1790883831636}
+{"type":"context.compiled","report":{"system":210,"state":26,"tools":659,"history":5,"total":905,"budget":262144,"pruned":"none","exposedCapabilities":["fs.read","fs.list","fs.search","fs.edit","fs.write","shell.exec","git.status","git.diff","plan.update"]},"at":1790883831639}
+{"type":"model.started","call":1,"at":1790883831641}
+{"type":"error","error":{"code":"MODEL_ERROR","message":"OpenRouter error: Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day","recoverable":true},"at":1790883836112}
+{"type":"session.completed","status":"blocked","stopReason":{"code":"MODEL_ERROR","message":"OpenRouter error: Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day","recoverable":true},"verified":false,"at":1790883836117}
+{"type":"user.message","text":"hi","at":1790884145634}
+{"type":"intent.updated","intent":{"text":"hi","kind":"general","at":1790884145633},"at":1790884145635}
+{"type":"state.changed","status":"running","phase":"observe","at":1790884145637}
+{"type":"context.compiled","report":{"system":210,"state":26,"tools":659,"history":10,"total":910,"budget":262144,"pruned":"none","exposedCapabilities":["fs.read","fs.list","fs.search","fs.edit","fs.write","shell.exec","git.status","git.diff","plan.update"]},"at":1790884145639}
+{"type":"model.started","call":1,"at":1790884145641}
+{"type":"error","error":{"code":"MODEL_ERROR","message":"OpenRouter error: Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day","recoverable":true},"at":1790884149769}
+{"type":"session.completed","status":"blocked","stopReason":{"code":"MODEL_ERROR","message":"OpenRouter error: Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day","recoverable":true},"verified":false,"at":1790884149773}

@@ -1,0 +1,4 @@
+2026-10-01T19:57:03.391Z [CORE] session.started id=20261002012703-xo7r mode=edit
+2026-10-01T19:57:11.157Z [CORE] intent.updated kind=build
+2026-10-01T19:57:11.161Z [CORE] context.compiled tokens=950 budget=262144 pruned=none tools=9
+2026-10-01T19:57:11.165Z [CORE] model.started call=1

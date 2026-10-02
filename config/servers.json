@@ -1,0 +1,15 @@
+{
+  "log_level": "INFO",
+  "servers": {
+    "calculator-stdio": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["-m", "mcp_system.server", "--transport", "stdio"]
+    },
+    "calculator-http": {
+      "transport": "streamable-http",
+      "url": "http://127.0.0.1:8000/mcp",
+      "enabled": false
+    }
+  }
+}
