@@ -30,6 +30,7 @@ class ToolInfo(BaseModel):
     tool: str  # name on the server
     description: str = ""
     input_schema: dict[str, Any] = Field(default_factory=dict)
+    ui_resource_uri: str | None = None  # MCP App (ui://) resource that renders this tool's result
 
 
 class ServerInfo(BaseModel):

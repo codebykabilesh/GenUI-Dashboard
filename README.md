@@ -14,6 +14,17 @@ uv run uvicorn app.main:app --reload
 uv run pytest
 ```
 
+## Generative UI (Prefab)
+
+`servers/prefab` runs FastMCP's `GenerativeUI` provider: the LLM calls `generate_prefab_ui` with Prefab Python (cards, tables, charts, metrics). The host reads the tool's `ui://` resource and returns it in `ChatResponse.ui_resources`; the frontend (`frontend/src/components/McpAppView.tsx`) renders it in a sandboxed iframe through `@modelcontextprotocol/ext-apps` AppBridge. The server-side sandbox needs Deno (installed via the `deno` PyPI package; run through `uv run` so it is on PATH), and the view loads the Prefab renderer from `cdn.jsdelivr.net`.
+
+```powershell
+uv run python -m servers.investigation   # :8101
+uv run python -m servers.prefab          # :8102
+uv run uvicorn app.main:app --reload     # :8000, MCP_SERVERS must list both (see .env.example)
+cd frontend; npm install; npm run dev
+```
+
 ## Endpoints
 
 | Method | Path | Purpose |

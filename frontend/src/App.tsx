@@ -75,7 +75,7 @@ export default function App() {
     if (inflight.current) return; // one request at a time
     inflight.current = true;
     setBusy(true);
-    patchMsg(convId, replyId, { content: "", error: false });
+    patchMsg(convId, replyId, { content: "", error: false, uiResources: undefined });
 
     const controller = new AbortController();
     abort.current = controller;
@@ -95,8 +95,14 @@ export default function App() {
       }
       setConversations((cs) => cs.map((c) => (c.id === convId ? { ...c, sessionId: data.session_id } : c)));
 
-      const full = data.reply || "(The assistant returned an empty response.)";
+      const uiResources = data.ui_resources ?? [];
+      if (uiResources.length) patchMsg(convId, replyId, { uiResources });
+      const full = data.reply || (uiResources.length ? "" : "(The assistant returned an empty response.)");
       let i = 0;
+      if (!full) {
+        stop();
+        return;
+      }
       timer.current = window.setInterval(() => {
         i += 2;
         patchMsg(convId, replyId, { content: full.slice(0, i) });
@@ -105,7 +111,7 @@ export default function App() {
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         // Stopped by the user: drop the placeholder if nothing was received.
-        patch(convId, (m) => m.filter((x) => !(x.id === replyId && x.content === "")));
+        patch(convId, (m) => m.filter((x) => !(x.id === replyId && x.content === "" && !x.uiResources?.length)));
         return;
       }
       console.error("Error calling backend:", error);

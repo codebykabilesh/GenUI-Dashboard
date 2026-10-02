@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     # Legacy variable names, used as fallback by the "openrouter" provider.
     openrouter_api_key: SecretStr | None = None
     openrouter_model: str = ""
-    max_tool_rounds: int = 5
+    max_tool_rounds: int = 8
 
     mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
     mcp_servers_file: str = ""

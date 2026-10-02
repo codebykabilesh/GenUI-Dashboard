@@ -104,3 +104,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .assistant-text.error { color: #ef4444; }
 .retry-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; font-size: 14px; color: var(--text); }
 .retry-btn:hover { background: var(--hover); }
+
+/* MCP App views (Prefab generative UI) */
+.mcp-app { margin-top: 12px; width: 100%; }
+.mcp-app iframe { display: block; width: 100%; border: 0; border-radius: 12px; background: transparent; color-scheme: normal; }
+.mcp-app-error { color: #ef4444; font-size: 13px; margin-top: 6px; }

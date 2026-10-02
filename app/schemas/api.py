@@ -26,11 +26,25 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
 
 
+class UIResource(BaseModel):
+    """An MCP App view for one tool call, to be rendered by the frontend host."""
+
+    call_id: str
+    tool_name: str  # namespaced
+    server: str
+    resource_uri: str
+    html: str
+    csp: dict[str, Any] | None = None
+    tool_input: dict[str, Any] = Field(default_factory=dict)
+    tool_result: Any = None
+
+
 class ChatResponse(BaseModel):
     session_id: str
     reply: str
     tool_calls: list[ToolCall] = Field(default_factory=list)
     tool_results: list[ToolResult] = Field(default_factory=list)
+    ui_resources: list[UIResource] = Field(default_factory=list)
     llm_provider: str
 
 

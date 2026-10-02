@@ -7,10 +7,11 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "fastmcp>=2.10",
+    "fastmcp[apps]>=3.2",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
     "jsonschema>=4",
+    "deno>=2.9.7",
 ]
 
 [dependency-groups]

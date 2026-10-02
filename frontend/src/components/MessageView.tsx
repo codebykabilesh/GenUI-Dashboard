@@ -1,4 +1,5 @@
 import type { Message } from "../types";
+import McpAppView from "./McpAppView";
 import { CopyIcon, LogoIcon, RefreshIcon, ThumbDownIcon, ThumbUpIcon } from "./Icons";
 
 interface Props {
@@ -23,6 +24,7 @@ export default function MessageView({ message, typing, onRetry }: Props) {
           {message.content}
           {typing && <span className="cursor" />}
         </div>
+        {message.uiResources?.map((ui) => <McpAppView key={ui.call_id} ui={ui} />)}
         {message.error && onRetry && (
           <button className="retry-btn" onClick={onRetry}><RefreshIcon /> Retry</button>
         )}

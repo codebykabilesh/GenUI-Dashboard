@@ -28,6 +28,15 @@ def default_client_factory(config: MCPServerConfig) -> Client:
     return Client(config.to_client_config(), name=f"genui-runtime-{config.name}")
 
 
+def _ui_resource_uri(meta: dict[str, Any] | None) -> str | None:
+    """MCP Apps: a tool links its view via `_meta.ui.resourceUri` (legacy `ui/resourceUri`)."""
+    if not meta:
+        return None
+    ui = meta.get("ui")
+    uri = ui.get("resourceUri") if isinstance(ui, dict) else meta.get("ui/resourceUri")
+    return uri if isinstance(uri, str) and uri.startswith("ui://") else None
+
+
 @dataclass
 class _Connection:
     config: MCPServerConfig
@@ -57,6 +66,7 @@ class MCPClientManager:
         self._connect_timeout = connect_timeout
         self._call_timeout = call_timeout
         self._factory = client_factory
+        self._ui_cache: dict[tuple[str, str], tuple[str, dict[str, Any] | None]] = {}
         for conn in self._conns.values():
             if not conn.config.enabled:
                 conn.status = "disabled"
@@ -88,6 +98,7 @@ class MCPClientManager:
                         tool=t.name,
                         description=t.description or "",
                         input_schema=t.input_schema,
+                        ui_resource_uri=_ui_resource_uri(getattr(t, "meta", None)),
                     )
                     for t in raw_tools
                 ]
@@ -135,6 +146,29 @@ class MCPClientManager:
 
     def list_tools(self) -> list[ToolInfo]:
         return [t for c in self._conns.values() if c.status == "connected" for t in c.tools]
+
+    async def read_ui_resource(self, server: str, uri: str) -> tuple[str, dict[str, Any] | None]:
+        """Fetch an MCP App `ui://` resource: (html, csp). Static, so cached per server."""
+        conn = self._conns.get(server)
+        if conn is None or conn.client is None or conn.status != "connected":
+            raise ServerUnavailableError(f"Server '{server}' is unavailable")
+        key = (server, uri)
+        if key not in self._ui_cache:
+            try:
+                contents = await asyncio.wait_for(
+                    conn.client.read_resource(uri), timeout=self._call_timeout
+                )
+            except Exception as exc:
+                raise MCPServerError(f"Reading '{uri}' from '{server}' failed: {exc}") from exc
+            part = contents[0] if contents else None
+            html = getattr(part, "text", None)
+            if not html:
+                raise MCPServerError(f"Resource '{uri}' from '{server}' has no HTML content")
+            meta = getattr(part, "meta", None) or {}
+            ui = meta.get("ui") if isinstance(meta, dict) else None
+            csp = ui.get("csp") if isinstance(ui, dict) else None
+            self._ui_cache[key] = (html, csp)
+        return self._ui_cache[key]
 
     async def refresh(self) -> None:
         """Reconnect failed/disconnected servers and re-discover tools."""

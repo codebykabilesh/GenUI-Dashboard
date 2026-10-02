@@ -6,13 +6,17 @@ from app.core.errors import AppError
 from app.llm.gateway import LLMGateway
 from app.mcp.manager import MCPClientManager
 from app.orchestrator.prompts import SYSTEM_PROMPT
-from app.schemas.api import ChatResponse
+from app.schemas.api import ChatResponse, UIResource
 from app.schemas.common import Message, ToolCall, ToolInfo, ToolResult
 from app.sessions.manager import SessionManager
 
 logger = logging.getLogger(__name__)
 
 MAX_TOOL_OUTPUT_CHARS = 20_000
+UI_RENDERED_NOTE = (
+    "[TOOL RESULT] The UI was generated successfully and is now displayed to the user in the chat. "
+    "Do not repeat its contents; reply with a one or two sentence summary of what it shows."
+)
 LIMIT_NOTICE = (
     "The tool-call limit for this request was reached. Answer now with what you already have, "
     "and say what is still unknown."
@@ -49,6 +53,8 @@ class Orchestrator:
 
         calls: list[ToolCall] = []
         results: list[ToolResult] = []
+        ui_resources: list[UIResource] = []
+        ui_tools = {t.name: t for t in tools if t.ui_resource_uri}
         reply = ""
 
         for _ in range(self._max_rounds):
@@ -63,9 +69,18 @@ class Orchestrator:
             for call, result in zip(response.tool_calls, round_results):
                 calls.append(call)
                 results.append(result)
+                ui = None
+                if not result.is_error and call.name in ui_tools:
+                    ui = await self._build_ui(ui_tools[call.name], call, result)
+                    if ui:
+                        ui_resources.append(ui)
                 await self._sessions.append(
                     session.id,
-                    Message(role="tool", content=self._serialize(result), tool_result=result),
+                    Message(
+                        role="tool",
+                        content=UI_RENDERED_NOTE if ui else self._serialize(result),
+                        tool_result=result,
+                    ),
                 )
         else:
             # Limit hit: ask for a final answer without offering tools.
@@ -81,7 +96,25 @@ class Orchestrator:
             reply=reply,
             tool_calls=calls,
             tool_results=results,
+            ui_resources=ui_resources,
             llm_provider=self._llm.provider_name,
+        )
+
+    async def _build_ui(self, tool: ToolInfo, call: ToolCall, result: ToolResult) -> UIResource | None:
+        try:
+            html, csp = await self._mcp.read_ui_resource(tool.server, tool.ui_resource_uri or "")
+        except AppError as exc:
+            logger.warning("Could not load UI for %s: %s", call.name, exc.message)
+            return None
+        return UIResource(
+            call_id=call.id,
+            tool_name=call.name,
+            server=tool.server,
+            resource_uri=tool.ui_resource_uri or "",
+            html=html,
+            csp=csp,
+            tool_input=call.arguments,
+            tool_result=result.content,
         )
 
     async def _record_assistant(self, session_id: str, content: str, calls: list[ToolCall]) -> None:
