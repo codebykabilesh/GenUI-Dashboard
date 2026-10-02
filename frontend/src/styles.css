@@ -99,3 +99,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   .sidebar { position: fixed; z-index: 10; height: 100%; }
   .bubble { max-width: 85%; }
 }
+
+/* backend errors + retry */
+.assistant-text.error { color: #ef4444; }
+.retry-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; font-size: 14px; color: var(--text); }
+.retry-btn:hover { background: var(--hover); }

@@ -1,7 +1,13 @@
 import type { Message } from "../types";
 import { CopyIcon, LogoIcon, RefreshIcon, ThumbDownIcon, ThumbUpIcon } from "./Icons";
 
-export default function MessageView({ message, typing }: { message: Message; typing?: boolean }) {
+interface Props {
+  message: Message;
+  typing?: boolean;
+  onRetry?: () => void;
+}
+
+export default function MessageView({ message, typing, onRetry }: Props) {
   if (message.role === "user") {
     return (
       <div className="msg user">
@@ -13,11 +19,14 @@ export default function MessageView({ message, typing }: { message: Message; typ
     <div className="msg assistant">
       <div className="assistant-avatar"><LogoIcon /></div>
       <div className="assistant-body">
-        <div className="assistant-text">
+        <div className={`assistant-text${message.error ? " error" : ""}`}>
           {message.content}
           {typing && <span className="cursor" />}
         </div>
-        {!typing && (
+        {message.error && onRetry && (
+          <button className="retry-btn" onClick={onRetry}><RefreshIcon /> Retry</button>
+        )}
+        {!typing && !message.error && (
           <div className="actions">
             <button className="icon-btn sm" aria-label="Copy" onClick={() => navigator.clipboard?.writeText(message.content)}><CopyIcon /></button>
             <button className="icon-btn sm" aria-label="Good response"><ThumbUpIcon /></button>
