@@ -1,7 +1,9 @@
 """Turns MCP tool results into A2UI surfaces.
 
-The LLM decides which tools to call; this module decides how each result is drawn,
-from a fixed component catalog. Surfaces only display data returned by the tools.
+For every tool result this builds the surface's data model (and the facts and
+prebuilt blocks an LLM-designed layout binds to, see designer.py) plus a default
+template layout, used when no LLM layout is requested or the LLM's layout is rejected.
+Surfaces only display data returned by the tools.
 """
 
 import logging
@@ -72,6 +74,13 @@ class UIComposer:
     async def compose(
         self, tool: str, args: dict[str, Any], result: Any, surface_id: str | None = None
     ) -> list[A2UIMessage] | None:
+        built = await self.build(tool, args, result, surface_id)
+        return built[0].messages(built[1]) if built else None
+
+    async def build(
+        self, tool: str, args: dict[str, Any], result: Any, surface_id: str | None = None
+    ) -> tuple[Surface, str] | None:
+        """The default (template) surface and its root id; also the data an LLM layout binds to."""
         builder = self._builders.get(tool)
         if builder is None or not isinstance(result, dict):
             return None
@@ -82,7 +91,7 @@ class UIComposer:
         except Exception:
             logger.exception("Failed to compose UI for %s", tool)
             return None
-        return surface.messages(root)
+        return surface, root
 
     async def _junctions(self) -> list[str]:
         if self._junction_lookup is None:
@@ -97,6 +106,9 @@ class UIComposer:
     @staticmethod
     def _header(s: Surface, title: str, subtitle: str = "", plate: str | None = None,
                 badge: tuple[str, str] | None = None) -> str:
+        s.facts.update(title=title, subtitle=subtitle)
+        if plate:
+            s.facts["plate"] = plate
         parts = []
         if plate:
             parts.append(s.plate(plate, action="vehicle_details"))
@@ -114,7 +126,8 @@ class UIComposer:
         s.data["query"] = query
         field = s.text_field("Registration number", "/query")
         go = s.button("Search", "search_vehicle", {"registration_number": path("/query")})
-        return s.row([field, go], alignment="end")
+        s.blocks["search"] = s.row([field, go], alignment="end")
+        return s.blocks["search"]
 
     @staticmethod
     def _junction_choice(s: Surface, junctions: list[str], selected: list[str], allow_all: bool = True,
@@ -134,7 +147,8 @@ class UIComposer:
         return {"start_time": path("/start"), "end_time": path("/end"), "junction_id": path("/junction")}
 
     def _filters(self, s: Surface, inputs: list[str], action: str, context: dict) -> str:
-        return s.add("Filters", {"children": {"explicitList": [*inputs, s.button("Apply", action, context)]}})
+        s.blocks["filters"] = s.add("Filters", {"children": {"explicitList": [*inputs, s.button("Apply", action, context)]}})
+        return s.blocks["filters"]
 
     # investigation -----------------------------------------------------------
     def _not_found(self, s: Surface, title: str, detail: str, plate: str | None = None, search: bool = True) -> str:

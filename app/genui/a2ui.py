@@ -51,6 +51,16 @@ def to_contents(data: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def child_ids(props: dict[str, Any]) -> list[str]:
+    """Component ids referenced by a component's props (child, children list or template)."""
+    refs = [props["child"]] if isinstance(props.get("child"), str) else []
+    children = props.get("children") or {}
+    refs += children.get("explicitList", [])
+    if "template" in children:
+        refs.append(children["template"]["componentId"])
+    return refs
+
+
 class Surface:
     """Collects components and data for one surface, then emits A2UI messages."""
 
@@ -59,6 +69,10 @@ class Surface:
         self._components: list[dict[str, Any]] = []
         self._ids: set[str] = set()
         self.data: dict[str, Any] = {}
+        # Code-computed figures (stat tiles, header) and named prebuilt sub-trees, so an
+        # LLM-designed layout can bind to them instead of writing values itself.
+        self.facts: dict[str, Any] = {}
+        self.blocks: dict[str, str] = {}
         self._n = 0
 
     def add(self, type_: str, props: dict[str, Any], id_: str | None = None) -> str:
@@ -137,9 +151,25 @@ class Surface:
         props: dict[str, Any] = {"label": lit(label), "value": lit(value), "tone": tone, "size": size}
         if caption:
             props["caption"] = lit(caption)
+        key = "_".join(label.lower().split())
+        self.facts.setdefault("stats", {})[key] = {"label": label, "value": value, "caption": caption}
         return self.add("Stat", props, id_)
 
     # output -------------------------------------------------------------------
+    def subtree(self, root: str) -> list[dict[str, Any]]:
+        """Component `root` and everything it references, in definition order."""
+        by_id = {c["id"]: c for c in self._components}
+        seen: set[str] = set()
+        stack = [root]
+        while stack:
+            cid = stack.pop()
+            if cid in seen or cid not in by_id:
+                continue
+            seen.add(cid)
+            (props,) = by_id[cid]["component"].values()
+            stack.extend(child_ids(props))
+        return [c for c in self._components if c["id"] in seen]
+
     def messages(self, root: str) -> list[A2UIMessage]:
         msgs: list[A2UIMessage] = [{"surfaceUpdate": {"surfaceId": self.id, "components": self._components}}]
         if self.data:

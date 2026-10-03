@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     openrouter_api_key: SecretStr | None = None
     openrouter_model: str = ""
     max_tool_rounds: int = 5
+    # LLM designs each GenUI panel's layout (template layout as fallback). Off with the mock provider.
+    genui_llm_layout: bool = True
+    genui_layout_timeout: float = 25.0
 
     mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
     mcp_servers_file: str = ""

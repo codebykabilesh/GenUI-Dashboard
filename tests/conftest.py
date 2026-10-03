@@ -6,6 +6,12 @@ from app.core.config import MCPServerConfig, Settings
 from app.main import create_app
 
 
+@pytest.fixture(autouse=True)
+def _template_layouts(monkeypatch):
+    """Existing tests script every LLM request; LLM-designed panels are tested in test_genui_llm.py."""
+    monkeypatch.setenv("GENUI_LLM_LAYOUT", "false")
+
+
 def make_test_server() -> FastMCP:
     """In-process FastMCP server used only to exercise the client path in tests."""
     server = FastMCP("test-server")
