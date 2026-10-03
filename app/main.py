@@ -9,6 +9,7 @@ from app.api.routes import chat, health, mcp, ui
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import setup_logging
+from app.genui.designer import LayoutDesigner
 from app.genui.service import GenUIService
 from app.llm.base import LLMProvider
 from app.llm.gateway import LLMGateway, create_provider
@@ -40,12 +41,17 @@ def create_app(
         app.state.settings = settings
         app.state.sessions = sessions
         app.state.mcp = mcp_manager
-        app.state.genui = GenUIService(mcp_manager, sessions)
+        designer = (
+            LayoutDesigner(llm, timeout=settings.genui_layout_timeout)
+            if settings.genui_llm_layout and llm.provider_name != "mock"
+            else None
+        )
+        app.state.genui = GenUIService(mcp_manager, sessions, designer)
         app.state.orchestrator = Orchestrator(
             sessions, mcp_manager, llm, max_tool_rounds=settings.max_tool_rounds, genui=app.state.genui
         )
         await mcp_manager.start()
-        logger.info("Runtime started (llm=%s)", llm.provider_name)
+        logger.info("Runtime started (llm=%s, genui=%s)", llm.provider_name, "llm" if designer else "template")
         try:
             yield
         finally:

@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -8,11 +9,14 @@ from app.core.errors import AppError
 from app.genui.a2ui import A2UIMessage
 from app.genui.actions import ACTIONS
 from app.genui.composer import UIComposer
+from app.genui.designer import Design, LayoutDesigner, LayoutError, compile_layout
 from app.mcp.manager import MCPClientManager
 from app.schemas.common import Message, ToolCall, ToolResult
 from app.sessions.manager import SessionManager
 
 logger = logging.getLogger(__name__)
+
+MAX_STORED_DESIGNS = 256
 
 
 class UnknownActionError(AppError):
@@ -21,13 +25,22 @@ class UnknownActionError(AppError):
 
 
 class GenUIService:
-    """Renders tool results as A2UI surfaces and executes userActions from them."""
+    """Renders tool results as A2UI surfaces and executes userActions from them.
 
-    def __init__(self, mcp: MCPClientManager, sessions: SessionManager) -> None:
+    With a designer, the LLM lays out each surface for the user's request; the template
+    from the composer is the fallback. A filter change keeps the surface's LLM layout
+    and only refreshes its data.
+    """
+
+    def __init__(
+        self, mcp: MCPClientManager, sessions: SessionManager, designer: LayoutDesigner | None = None
+    ) -> None:
         self._mcp = mcp
         self._sessions = sessions
         self._junctions: list[str] = []
         self.composer = UIComposer(self._known_junctions)
+        self._designer = designer
+        self._designs: OrderedDict[str, Design] = OrderedDict()  # surface id -> its LLM layout
 
     async def _known_junctions(self) -> list[str]:
         """Junction IDs as reported by the analytics server (cached once found)."""
@@ -51,12 +64,48 @@ class GenUIService:
             return None
 
     async def render(
-        self, tool_name: str, arguments: dict[str, Any], result: Any, surface_id: str | None = None
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        result: Any,
+        surface_id: str | None = None,
+        intent: str | None = None,
     ) -> list[A2UIMessage]:
+        """A2UI messages for one tool result.
+
+        `intent` (what the user asked) requests a fresh LLM layout; without it, a surface
+        being replaced keeps the LLM layout it already had.
+        """
         bare = self._bare(tool_name)
         if bare is None:
             return []
-        return await self.composer.compose(bare, arguments, result, surface_id) or []
+        built = await self.composer.build(bare, arguments, result, surface_id)
+        if built is None:
+            return []
+        surface, root = built
+        if self._designer:
+            stored = self._designs.get(surface.id) if surface_id and not intent else None
+            if stored:
+                try:
+                    messages = compile_layout(stored, surface)
+                    logger.info("ui %s: llm layout reused for %s", surface.id, bare)
+                    return messages
+                except LayoutError as exc:
+                    logger.info("ui %s: stored layout does not fit the new data (%s)", surface.id, exc)
+            elif intent:
+                designed = await self._designer.design(intent, bare, arguments, surface)
+                if designed:
+                    self._remember(surface.id, designed[0])
+                    logger.info("ui %s: llm layout for %s", surface.id, bare)
+                    return designed[1]
+        logger.info("ui %s: template layout for %s", surface.id, bare)
+        return surface.messages(root)
+
+    def _remember(self, surface_id: str, design: Design) -> None:
+        self._designs[surface_id] = design
+        self._designs.move_to_end(surface_id)
+        while len(self._designs) > MAX_STORED_DESIGNS:
+            self._designs.popitem(last=False)
 
     async def handle_action(
         self, session_id: str | None, name: str, surface_id: str, context: dict[str, Any]
@@ -70,7 +119,9 @@ class GenUIService:
 
         # Same tool as the surface that sent the action -> update that surface in place.
         replace = surface_id.startswith(info.tool.replace("_", "-") + "-")
-        messages = await self.render(info.name, arguments, result, surface_id if replace else None)
+        # navigation opens a new surface, laid out for what the user clicked
+        intent = None if replace else f"The user clicked '{name}' in a panel, with {json.dumps(context, default=str)}."
+        messages = await self.render(info.name, arguments, result, surface_id if replace else None, intent)
         logger.info("ui action %s -> %s (replace=%s)", name, info.name, replace)
 
         if session_id:

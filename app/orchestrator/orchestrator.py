@@ -112,52 +112,76 @@ class Orchestrator:
         results: list[ToolResult] = []
         ui: list[dict[str, Any]] = []
         reply = ""
+        # Panels are designed (possibly by the LLM) while the conversation continues, and
+        # sent in tool-call order as soon as they are ready.
+        panels: list[asyncio.Task] = []
 
-        for _ in range(self._max_rounds):
-            response = LLMResponse()
-            async for kind, data in self._next_response(self._context(session.messages), tools, stream):
-                if kind == "response":
-                    response = data
-                else:
-                    yield kind, data
-            await self._record_assistant(session.id, response.content, response.tool_calls)
-            reply = response.content
-            if not response.tool_calls:
-                break
-            for call in response.tool_calls:
-                yield "tool_call", {"id": call.id, "name": call.name, "arguments": call.arguments}
-            round_results = await asyncio.gather(
-                *(self._execute(c, aliases) for c in response.tool_calls)
-            )
-            for call, result in zip(response.tool_calls, round_results):
-                calls.append(call)
-                results.append(result)
-                await self._sessions.append(
-                    session.id,
-                    Message(role="tool", content=self._serialize(result), tool_result=result),
+        async def ready_panels(wait: bool = False) -> AsyncIterator[tuple[str, Any]]:
+            while panels and (wait or panels[0].done()):
+                task = panels.pop(0)
+                try:
+                    surface = await task
+                except Exception:
+                    logger.exception("Panel rendering failed")
+                    continue
+                if surface:
+                    ui.extend(surface)
+                    yield "a2ui", {"messages": surface}
+
+        try:
+            for _ in range(self._max_rounds):
+                response = LLMResponse()
+                async for kind, data in self._next_response(self._context(session.messages), tools, stream):
+                    if kind == "response":
+                        response = data
+                    else:
+                        yield kind, data
+                    async for event in ready_panels():
+                        yield event
+                await self._record_assistant(session.id, response.content, response.tool_calls)
+                reply = response.content
+                if not response.tool_calls:
+                    break
+                for call in response.tool_calls:
+                    yield "tool_call", {"id": call.id, "name": call.name, "arguments": call.arguments}
+                round_results = await asyncio.gather(
+                    *(self._execute(c, aliases) for c in response.tool_calls)
                 )
-                yield "tool_result", {
-                    "call_id": result.call_id,
-                    "name": result.name,
-                    "is_error": result.is_error,
-                }
-                if self._genui and not result.is_error:
-                    surface = await self._genui.render(aliases.get(call.name, call.name), call.arguments, result.content)
-                    if surface:
-                        ui.extend(surface)
-                        yield "a2ui", {"messages": surface}
-        else:
-            # Limit hit: ask for a final answer without offering tools.
-            logger.warning("Tool round limit (%d) reached in session %s", self._max_rounds, session.id)
-            final = LLMResponse()
-            history = [*self._context(session.messages), Message(role="user", content=LIMIT_NOTICE)]
-            async for kind, data in self._next_response(history, [], stream):
-                if kind == "response":
-                    final = data
-                else:
-                    yield kind, data
-            reply = final.content or "Stopped: tool-call limit reached."
-            await self._record_assistant(session.id, reply, [])
+                for call, result in zip(response.tool_calls, round_results):
+                    calls.append(call)
+                    results.append(result)
+                    await self._sessions.append(
+                        session.id,
+                        Message(role="tool", content=self._serialize(result), tool_result=result),
+                    )
+                    yield "tool_result", {
+                        "call_id": result.call_id,
+                        "name": result.name,
+                        "is_error": result.is_error,
+                    }
+                    if self._genui and not result.is_error:
+                        panels.append(asyncio.create_task(self._genui.render(
+                            aliases.get(call.name, call.name), call.arguments, result.content, intent=message
+                        )))
+                async for event in ready_panels():
+                    yield event
+            else:
+                # Limit hit: ask for a final answer without offering tools.
+                logger.warning("Tool round limit (%d) reached in session %s", self._max_rounds, session.id)
+                final = LLMResponse()
+                history = [*self._context(session.messages), Message(role="user", content=LIMIT_NOTICE)]
+                async for kind, data in self._next_response(history, [], stream):
+                    if kind == "response":
+                        final = data
+                    else:
+                        yield kind, data
+                reply = final.content or "Stopped: tool-call limit reached."
+                await self._record_assistant(session.id, reply, [])
+            async for event in ready_panels(wait=True):
+                yield event
+        finally:
+            for task in panels:  # only left over if the request was abandoned
+                task.cancel()
 
         yield "done", ChatResponse(
             session_id=session.id,
